@@ -1,13 +1,17 @@
 services:
   app:
     build: ./app
-    ports:
-      - "8080:8080"
+    # GEEN externe poorten meer ("8080:8080" is weggehaald). 
+    # De app is nu enkel nog intern bereikbaar achter BunkerWeb:
+    expose:
+      - "8080"
     environment:
       ConnectionStrings__Unbreakable: "Host=db;Port=5432;Database=unbreakable;Username=unbreakable;Password=Unbr3akable!2026"
     depends_on:
       - db
     restart: unless-stopped
+    networks:
+      - default
 
   db:
     image: postgres:17
@@ -18,6 +22,32 @@ services:
     volumes:
       - dbdata:/var/lib/postgresql/data
     restart: unless-stopped
+    networks:
+      - default
+
+  bunkerweb:
+    image: bunkerity/bunkerweb:latest
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - MULTISITE=no
+      - SERVER_NAME=*
+      - USE_PROXY=yes
+      - BACKUP_REVERSE_PROXY_URL=http://app:8080
+      - AUTO_SELF_SIGNED=yes
+    volumes:
+      - bunkerweb-logs:/var/log/bunkerweb
+      - bunkerweb-cache:/var/cache/bunkerweb
+    networks:
+      - default
 
 volumes:
   dbdata:
+  bunkerweb-logs:
+  bunkerweb-cache:
+
+networks:
+  default:
+    name: websec-unbreakable-g16_default
