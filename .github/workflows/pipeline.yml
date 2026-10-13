@@ -46,6 +46,6 @@ jobs:
       # 5. Automatische uitrol (Deployment) via Docker Compose
       - name: Deploy application to server
         run: |
-          echo "Alle beveiligingsscans geslaagd! Start automatische deployment..."
-          docker compose down
+          echo "=== Alle beveiligingsscans geslaagd! Start automatische deployment ==="
+          docker compose down --remove-orphans || true
           docker compose up -d --build
