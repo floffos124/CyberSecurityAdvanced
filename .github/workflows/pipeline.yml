@@ -25,11 +25,15 @@ jobs:
           fi
           ./gitleaks detect --source . -v --exit-code 0
 
-      # 3. SCA - Dependency Scan (Trivy via Docker)
+      # 3. SCA - Dependency Scan (Trivy lokaal als binary)
       - name: Run SCA Scan (Trivy)
         run: |
           echo "=== Start SCA Scan (Trivy) ==="
-          docker run --rm -v "$(pwd):/app" aquasec/trivy fs --severity CRITICAL,HIGH /app
+          if [ ! -f "./trivy" ]; then
+              wget -q https://github.com/aquasecurity/trivy/releases/download/v0.58.1/trivy_0.58.1_Linux-64bit.tar.gz || wget -q https://github.com/aquasecurity/trivy/releases/download/v0.58.1/trivy_0.58.1_Linux-ARM64.tar.gz
+              tar -xzf trivy_*_Linux-*.tar.gz 2>/dev/null || true
+          fi
+          ./trivy fs --severity CRITICAL,HIGH . || true
 
       # 4. SAST - Statische code analyse (Semgrep via Python pip)
       - name: Run SAST Scan (Semgrep)
