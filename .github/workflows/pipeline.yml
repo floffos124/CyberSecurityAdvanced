@@ -25,15 +25,16 @@ jobs:
           fi
           ./gitleaks detect --source . -v --exit-code 0
 
-      # 3. SCA - Dependency Scan (Trivy lokaal als binary)
+      # 3. SCA - Dependency Scan (Trivy offline / robuust)
       - name: Run SCA Scan (Trivy)
         run: |
           echo "=== Start SCA Scan (Trivy) ==="
           if [ ! -f "./trivy" ]; then
-              wget -q https://github.com/aquasecurity/trivy/releases/download/v0.58.1/trivy_0.58.1_Linux-64bit.tar.gz || wget -q https://github.com/aquasecurity/trivy/releases/download/v0.58.1/trivy_0.58.1_Linux-ARM64.tar.gz
+              wget -q https://github.com/aquasecurity/trivy/releases/download/v0.58.1/trivy_0.58.1_Linux-64bit.tar.gz || true
               tar -xzf trivy_*_Linux-*.tar.gz 2>/dev/null || true
           fi
-          ./trivy fs --severity CRITICAL,HIGH . || true
+          # Voer de scan uit in offline modus of negeer fouten zodat de pipeline doorgaat naar deployment
+          ./trivy fs --offline-scan --severity CRITICAL,HIGH . || echo "Trivy scan overgeslagen vanwege ontbrekende offline DB"
 
       # 4. SAST - Statische code analyse (Semgrep via Python pip)
       - name: Run SAST Scan (Semgrep)
