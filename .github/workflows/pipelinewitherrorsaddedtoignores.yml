@@ -1,0 +1,109 @@
+name: Security Pipeline & Deployment
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+# Minimale rechten voor GITHUB_TOKEN: enkel code lezen.
+permissions:
+  contents: read
+
+env:
+  GITLEAKS_VERSION: "8.18.2"
+  GITLEAKS_SHA256: "6298c9235dfc9278c14b28afd9b7fa4e6f4a289cb1974bd27949fc1e9122bdee"
+  TRIVY_VERSION: "0.74.0"
+  TRIVY_SHA256: "2ae6fe3ee734b7fdf11335663e18c75ea12dccc76062f09f164a3b0f8be4371a"
+  SEMGREP_VERSION: "1.178.0"
+
+jobs:
+  # DSOMM: Test and Verification > Static depth for infrastructure > "Test for stored secrets in code" (level 1)
+  # Faalt bij elk geheim dat niet in .gitleaksignore staat.
+  secret-scan:
+    name: Secret scanning (Gitleaks)
+    runs-on: self-hosted
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0 # volledige history, zodat geheimen in oudere commits ook gevonden worden
+
+      - name: Install Gitleaks
+        run: |
+          cd "$RUNNER_TEMP"
+          wget -q "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" -O gitleaks.tar.gz
+          echo "${GITLEAKS_SHA256}  gitleaks.tar.gz" | sha256sum -c -
+          tar -xzf gitleaks.tar.gz gitleaks
+
+      - name: Run Gitleaks
+        run: |
+          "$RUNNER_TEMP/gitleaks" detect --source . --gitleaks-ignore-path .gitleaksignore --redact -v --exit-code 1
+
+  # DSOMM: Test and Verification > Static depth for applications > "Software Composition Analysis (server side)" (level 2)
+  # Faalt bij een HIGH/CRITICAL kwetsbaarheid in dependencies die niet in .trivyignore staat.
+  sca:
+    name: SCA (Trivy)
+    runs-on: self-hosted
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Install Trivy
+        run: |
+          cd "$RUNNER_TEMP"
+          wget -q "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz" -O trivy.tar.gz
+          echo "${TRIVY_SHA256}  trivy.tar.gz" | sha256sum -c -
+          tar -xzf trivy.tar.gz trivy
+
+      - name: Run Trivy
+        run: |
+          "$RUNNER_TEMP/trivy" fs \
+            --scanners vuln \
+            --severity HIGH,CRITICAL \
+            --ignorefile .trivyignore \
+            --cache-dir "$HOME/.cache/trivy" \
+            --exit-code 1 \
+            .
+
+  # DSOMM: Test and Verification > Static depth for applications > "Static analysis for important server side components" (level 3)
+  # Faalt bij een ERROR/WARNING bevinding die niet in .semgrep-baseline staat.
+  sast:
+    name: SAST (Semgrep)
+    runs-on: self-hosted
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Install Semgrep
+        run: |
+          python3 -m venv "$RUNNER_TEMP/semgrep-venv"
+          "$RUNNER_TEMP/semgrep-venv/bin/pip" install --quiet "semgrep==${SEMGREP_VERSION}"
+
+      - name: Run Semgrep
+        run: |
+          "$RUNNER_TEMP/semgrep-venv/bin/semgrep" scan \
+            --config p/default \
+            --metrics=off \
+            --json --output "$RUNNER_TEMP/semgrep.json" \
+            .
+          python3 .github/scripts/semgrep_gate.py "$RUNNER_TEMP/semgrep.json" .semgrep-baseline
+
+  # DSOMM: Build and Deployment > Deployment > "Defined deployment process" (level 1)
+  # Enkel bij een push naar main en enkel als alle scans geslaagd zijn.
+  deploy:
+    name: Deploy to server
+    needs: [ secret-scan, sca, sast ]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: self-hosted
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Deploy application with Docker Compose
+        run: |
+          echo "=== Alle beveiligingsscans geslaagd, start deployment ==="
+          docker compose up -d --build --remove-orphans

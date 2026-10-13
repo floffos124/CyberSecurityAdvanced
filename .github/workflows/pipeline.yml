@@ -92,7 +92,7 @@ jobs:
   # DSOMM: Build and Deployment > Deployment > "Defined deployment process"
   # Enkel bij een push naar main en enkel als alle scans geslaagd zijn.
   deploy:
-    name: Deploy to server
+    name: Deploy to server (BunkerWeb + App + DB)
     needs: [ secret-scan, sca, sast ]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: self-hosted
@@ -103,7 +103,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - name: Deploy application with Docker Compose
+      - name: Deploy application and WAF with Docker Compose
         run: |
-          echo "=== Alle beveiligingsscans geslaagd, start deployment ==="
+          echo "=== Alle beveiligingsscans geslaagd, start volledige stack deployment (inclusief BunkerWeb) ==="
           docker compose up -d --build --remove-orphans

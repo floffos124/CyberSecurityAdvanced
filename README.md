@@ -38,6 +38,7 @@ app/
     js/api.js               alle calls naar de API
     lib/                    Bootstrap en jQuery
 docs/threat-model.md        basis threat model van de starter app
+docs/pipeline.md            security pipeline: scans, DSOMM, baseline en deploy
 ```
 
 ### De API
