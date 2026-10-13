@@ -15,29 +15,40 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Secret Scanning (Gitleaks)
-      - name: Run Secret Scanning
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # 3. SCA - Dependency Scan (Trivy via apt of los script, of via de officiële setup)
-      - name: Run SCA Scan (Trivy)
-        uses: aquasecurity/trivy-action@0.28.0
-        with:
-          scan-type: 'fs'
-          scan-ref: '.'
-          severity: 'CRITICAL,HIGH'
-
-      # 4. SAST - Statische code analyse (gebruik Semgrep via Python pip in plaats van Docker container)
-      - name: Run SAST Scan (Semgrep CLI)
+      # 2. Secret Scanning (Gitleaks CLI lokaal installeren/draaien)
+      - name: Run Secret Scanning (Gitleaks)
         run: |
-          pip install semgrep
-          semgrep ci --config=auto || true
+          echo "Start Secret Scanning..."
+          # Controleer of gitleaks aanwezig is, zo niet installeer of draai via docker/bin
+          if ! command -v gitleaks &> /dev/null; then
+              wget https://github.com/gitleaks/gitleaks/releases/download/v8.18.2/gitleaks_8.18.2_linux_x64.tar.gz
+              tar -xzf gitleaks_8.18.2_linux_x64.tar.gz
+              sudo mv gitleaks /usr/local/bin/
+          fi
+          gitleaks detect --source . -v
+
+      # 3. SCA - Dependency Scan (Trivy lokaal)
+      - name: Run SCA Scan (Trivy)
+        run: |
+          echo "Start SCA Scan met Trivy..."
+          if ! command -v trivy &> /dev/null; then
+              sudo apt-get install -y wget apt-transport-https gnupg lsb-release
+              wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
+              echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee /etc/sudoers.d/trivy.list
+              sudo apt-get update && sudo apt-get install -y trivy
+          fi
+          trivy fs --severity CRITICAL,HIGH .
+
+      # 4. SAST - Statische code analyse (Semgrep via Python pip)
+      - name: Run SAST Scan (Semgrep)
+        run: |
+          echo "Start SAST Scan met Semgrep..."
+          pip3 install semgrep
+          semgrep ci --config=auto
 
       # 5. Automatische uitrol (Deployment) via Docker Compose
       - name: Deploy application to server
         run: |
-          echo "Scans afgerond! Start automatische deployment..."
+          echo "Alle beveiligingsscans geslaagd! Start automatische deployment..."
           docker compose down
           docker compose up -d --build
