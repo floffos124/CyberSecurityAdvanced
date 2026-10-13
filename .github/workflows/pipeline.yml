@@ -40,8 +40,8 @@ jobs:
       - name: Run SAST Scan (Semgrep)
         run: |
           echo "=== Start SAST Scan (Semgrep) ==="
-          pip3 install semgrep --break-system-packages || true
-          semgrep ci --config=auto || true
+          pip3 install semgrep --break-system-packages --quiet || true
+          /home/runner/.local/bin/semgrep ci --config=auto || true
 
       # 5. Automatische uitrol (Deployment) via Docker Compose
       - name: Deploy application to server
