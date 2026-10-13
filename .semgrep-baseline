@@ -1,0 +1,11 @@
+# Semgrep baseline: aanvaarde bevindingen uit de eerste run op de ongewijzigde app.
+# Formaat: <rule-id> <bestand>   (per regel+bestand, dus dezelfde regel elders faalt wel)
+# Elke regel krijgt erboven een reden. Gelezen door .github/scripts/semgrep_gate.py.
+
+# Container draait als root (geen USER in Dockerfile). Bestaand in de aangeleverde app; wordt in een
+# latere fase opgelost, code wordt in deze fase niet aangepast.
+dockerfile.security.missing-user-entrypoint.missing-user-entrypoint app/Dockerfile
+
+# app.UseDeveloperExceptionPage() toont stacktraces. Bestaand in de aangeleverde app; wordt in een
+# latere fase beperkt tot Development, code wordt in deze fase niet aangepast.
+csharp.lang.security.stacktrace-disclosure.stacktrace-disclosure app/Program.cs

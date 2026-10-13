@@ -1,1 +1,7 @@
-app/appsettings.json
+# Gitleaks baseline: aanvaarde bevindingen uit de eerste run op de ongewijzigde app.
+# Formaat: <commit>:<bestand>:<regel-id>:<lijn>  (fingerprint uit het gitleaks-rapport)
+# Elke regel krijgt erboven een reden. Nieuwe geheimen hebben een andere fingerprint en laten de pipeline falen.
+
+# Notifications:ApiKey in appsettings.json. Bestaand in de aangeleverde app; wordt in een latere fase
+# naar GitHub Secrets / omgevingsvariabele verplaatst en geroteerd. Code wordt in deze fase niet aangepast.
+9b24927f406510a987c1f1bd4d6adfe58e18bbdb:app/appsettings.json:generic-api-key:15

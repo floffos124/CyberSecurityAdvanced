@@ -1,0 +1,6 @@
+# Trivy baseline: aanvaarde bevindingen uit de eerste run op de ongewijzigde app.
+# Elke regel krijgt erboven een reden. Nieuwe CVE's (HIGH/CRITICAL) laten de pipeline falen.
+
+# Newtonsoft.Json 12.0.1 (HIGH, DoS via diep geneste JSON). Bestaande dependency van de aangeleverde app;
+# upgrade naar >= 13.0.1 gebeurt in een latere fase, code wordt in deze fase niet aangepast.
+CVE-2024-21907
