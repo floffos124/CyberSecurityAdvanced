@@ -103,6 +103,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
+      - name: Stop and remove old conflicting containers
+        run: |
+          docker stop websec-unbreakable-g16-bunkerweb-1 cybersecurityadvanced-bunkerweb-1 2>/dev/null || true
+          docker rm websec-unbreakable-g16-bunkerweb-1 cybersecurityadvanced-bunkerweb-1 2>/dev/null || true
+
       - name: Deploy application and WAF with Docker Compose
         run: |
           echo "=== Alle beveiligingsscans geslaagd, start volledige stack deployment (inclusief BunkerWeb) ==="
