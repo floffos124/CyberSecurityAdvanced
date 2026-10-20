@@ -32,7 +32,7 @@ services:
     labels:
       - "bunkerweb.INSTANCE=yes"
     environment:
-      - SERVER_NAME=g16.cyberaxel.be
+      - SERVER_NAME=g16.ipv6.thelastgym.be
       - USE_REVERSE_PROXY=yes
       - REVERSE_PROXY_URL=/
       - REVERSE_PROXY_HOST=http://app:8080
