@@ -62,6 +62,8 @@ services:
     restart: unless-stopped
     depends_on:
       - bw-docker
+    volumes:
+      - bw-data:/data
     environment:
       - DOCKER_HOST=tcp://bw-docker:2375
     networks:
