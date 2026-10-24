@@ -38,6 +38,7 @@ services:
       - REVERSE_PROXY_HOST=http://app:8080
       - AUTO_LETS_ENCRYPT=yes
       - API_WHITELIST_IP=127.0.0.0/8 10.20.30.0/24
+      - UI_HOST=http://bw-ui:7000
     networks:
       - bw-universe
       - bw-services
@@ -50,6 +51,17 @@ services:
       - bw-docker
     volumes:
       - bw-data:/data
+    environment:
+      - DOCKER_HOST=tcp://bw-docker:2375
+    networks:
+      - bw-universe
+      - bw-docker
+
+  bw-ui:
+    image: bunkerity/bunkerweb-ui:1.5.11
+    restart: unless-stopped
+    depends_on:
+      - bw-docker
     environment:
       - DOCKER_HOST=tcp://bw-docker:2375
     networks:
