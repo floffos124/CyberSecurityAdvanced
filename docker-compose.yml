@@ -33,12 +33,17 @@ services:
       - "bunkerweb.INSTANCE=yes"
     environment:
       - SERVER_NAME=g16.ipv6.thelastgym.be
-      - USE_REVERSE_PROXY=yes
-      - REVERSE_PROXY_URL=/
-      - REVERSE_PROXY_HOST=http://app:8080
-      - AUTO_LETS_ENCRYPT=yes
+      - MULTISITE=yes
       - API_WHITELIST_IP=127.0.0.0/8 10.20.30.0/24
-      - UI_HOST=http://bw-ui:7000
+      - AUTO_LETS_ENCRYPT=yes
+      - g16.ipv6.thelastgym.be_USE_REVERSE_PROXY=yes
+      - g16.ipv6.thelastgym.be_REVERSE_PROXY_URL=/
+      - g16.ipv6.thelastgym.be_REVERSE_PROXY_HOST=http://app:8080
+      - g16.ipv6.thelastgym.be_USE_UI=yes
+      - g16.ipv6.thelastgym.be_REVERSE_PROXY_URL_2=/bwmanager
+      - g16.ipv6.thelastgym.be_REVERSE_PROXY_HOST_2=http://bw-ui:7000
+      - g16.ipv6.thelastgym.be_INTERCEPTED_ERROR_CODES=400 404 405 413 429 500 501 502 503 504
+      - g16.ipv6.thelastgym.be_MAX_CLIENT_SIZE=50m
     networks:
       - bw-universe
       - bw-services
