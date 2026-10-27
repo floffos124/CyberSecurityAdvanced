@@ -1,6 +1,7 @@
 // De schermen van Unbreakable. Navigeren gebeurt met het deel na # in de URL.
 
 import { api, currentUser, setUser } from './api.js';
+import { encrypt, decrypt, prepareText } from './crypto.js';
 
 const app = document.getElementById('app');
 
@@ -147,14 +148,32 @@ async function renderMessage(id) {
             <dt class="col-sm-2">Van</dt><dd class="col-sm-10">${escapeHtml(m.sender)}</dd>
             <dt class="col-sm-2">Aan</dt><dd class="col-sm-10">${escapeHtml(m.recipient)}</dd>
             <dt class="col-sm-2">Verzonden</dt><dd class="col-sm-10">${formatDate(m.sentAt)}</dd>
+            ${m.keyLine ? `<dt class="col-sm-2">Codeboek lijn</dt><dd class="col-sm-10">${escapeHtml(String(m.keyLine))}</dd>` : ''}
         </dl>
         <div class="card mb-3"><div class="card-body message-body" id="body"></div></div>
+        <div class="form-inline mb-3">
+            <label for="decryptkey" class="mr-2">Sleutel om te ontcijferen:</label>
+            <input id="decryptkey" class="form-control mr-2" maxlength="40"
+                   pattern="[A-Za-z0-9_]+" title="Enkel A-Z, 0-9 en _" />
+            <button id="decryptbtn" class="btn btn-success">Ontcijferen</button>
+        </div>
         <p>
             <button id="delete" class="btn btn-outline-danger">Verwijderen</button>
             <a href="#/inbox" class="btn btn-link">Terug naar je inbox</a>
         </p>`;
 
     document.getElementById('body').textContent = m.body;
+
+    document.getElementById('decryptbtn').addEventListener('click', () => {
+        const key = document.getElementById('decryptkey').value.toUpperCase();
+        if (!key) return;
+        try {
+            const plaintext = decrypt(m.body, key);
+            document.getElementById('body').textContent = plaintext;
+        } catch (err) {
+            document.getElementById('body').textContent = 'Fout bij ontcijferen: ' + err.message;
+        }
+    });
 
     document.getElementById('delete').addEventListener('click', async () => {
         if (confirm('Ben je zeker dat je dit bericht wil verwijderen?')) {
@@ -191,6 +210,15 @@ async function renderNew() {
                         <label for="text">Bericht</label>
                         <textarea id="text" class="form-control" rows="6" required maxlength="2000"></textarea>
                     </div>
+                    <div class="form-group">
+                        <label for="keyline">Lijnnummer codeboek</label>
+                        <input id="keyline" class="form-control" type="number" min="1" max="50" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="otpkey">Sleutel (uit codeboek)</label>
+                        <input id="otpkey" class="form-control" required minlength="1" maxlength="40"
+                               pattern="[A-Za-z0-9_]+" title="Enkel A-Z, 0-9 en _" />
+                    </div>
                     <button type="submit" class="btn btn-primary">Versturen</button>
                     <a href="#/inbox" class="btn btn-link">Annuleren</a>
                 </form>
@@ -199,10 +227,17 @@ async function renderNew() {
 
     document.getElementById('compose').addEventListener('submit', async (event) => {
         event.preventDefault();
+        const plaintext = document.getElementById('text').value;
+        const key = document.getElementById('otpkey').value.toUpperCase();
+        const keyLine = document.getElementById('keyline').value;
+
+        const ciphertext = encrypt(plaintext, key);
+
         await api.send({
             recipient: document.getElementById('recipient').value.trim(),
             subject: document.getElementById('subject').value,
-            body: document.getElementById('text').value,
+            body: ciphertext,
+            keyLine: parseInt(keyLine, 10),
         });
         location.hash = '#/inbox';
     });
@@ -259,3 +294,4 @@ async function route() {
 
 window.addEventListener('hashchange', route);
 route();
+

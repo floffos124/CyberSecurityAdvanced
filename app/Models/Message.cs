@@ -28,4 +28,8 @@ public class Message
 
     [Display(Name = "Verzonden")]
     public DateTime SentAt { get; set; }
+
+    [Display(Name = "Codeboek lijn")]
+    public int? KeyLine { get; set; }
 }
+
