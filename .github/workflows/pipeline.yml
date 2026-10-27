@@ -105,8 +105,10 @@ jobs:
 
       - name: Stop and remove old conflicting containers
         run: |
-          docker stop websec-unbreakable-g16-bunkerweb-1 cybersecurityadvanced-bunkerweb-1 2>/dev/null || true
-          docker rm websec-unbreakable-g16-bunkerweb-1 cybersecurityadvanced-bunkerweb-1 2>/dev/null || true
+          docker stop $(docker ps -q --filter "name=websec-unbreakable-g16") 2>/dev/null || true
+          docker stop $(docker ps -q --filter "name=cybersecurityadvanced") 2>/dev/null || true
+          docker container prune -f
+          docker network prune -f
 
       - name: Deploy application and WAF with Docker Compose
         run: |
