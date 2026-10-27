@@ -41,6 +41,28 @@ export function encrypt(plaintext, key) {
     return ciphertext;
 }
 
+// Bereken HMAC-SHA256 over de ciphertext met een aparte sleutel
+// Geeft een hex-string terug
+export async function computeHmac(ciphertext, hmacKey) {
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(hmacKey);
+    const msgData = encoder.encode(ciphertext);
+
+    const cryptoKey = await crypto.subtle.importKey(
+        'raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+    );
+    const signature = await crypto.subtle.sign('HMAC', cryptoKey, msgData);
+    return Array.from(new Uint8Array(signature))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+}
+
+// Verifieer HMAC-SHA256: geeft true als de MAC klopt
+export async function verifyHmac(ciphertext, hmacKey, expectedMac) {
+    const computed = await computeHmac(ciphertext, hmacKey);
+    return computed === expectedMac;
+}
+
 // Ontcijfer: (ciphertext - sleutel) mod 37 per teken
 export function decrypt(ciphertext, key) {
     if (key.length < ciphertext.length) {

@@ -1,7 +1,7 @@
 // De schermen van Unbreakable. Navigeren gebeurt met het deel na # in de URL.
 
 import { api, currentUser, setUser } from './api.js';
-import { encrypt, decrypt, prepareText } from './crypto.js';
+import { encrypt, decrypt, prepareText, computeHmac, verifyHmac } from './crypto.js';
 
 const app = document.getElementById('app');
 
@@ -155,8 +155,11 @@ async function renderMessage(id) {
             <label for="decryptkey" class="mr-2">Sleutel om te ontcijferen:</label>
             <input id="decryptkey" class="form-control mr-2" maxlength="40"
                    pattern="[A-Za-z0-9_]+" title="Enkel A-Z, 0-9 en _" />
+            <label for="hmackey" class="mr-2 ml-3">HMAC sleutel:</label>
+            <input id="hmackey" class="form-control mr-2" />
             <button id="decryptbtn" class="btn btn-success">Ontcijferen</button>
         </div>
+        <div id="hmac-status" class="mb-3"></div>
         <p>
             <button id="delete" class="btn btn-outline-danger">Verwijderen</button>
             <a href="#/inbox" class="btn btn-link">Terug naar je inbox</a>
@@ -164,9 +167,27 @@ async function renderMessage(id) {
 
     document.getElementById('body').textContent = m.body;
 
-    document.getElementById('decryptbtn').addEventListener('click', () => {
+    document.getElementById('decryptbtn').addEventListener('click', async () => {
         const key = document.getElementById('decryptkey').value.toUpperCase();
+        const hmacKey = document.getElementById('hmackey').value;
         if (!key) return;
+
+        // Verifieer HMAC als er een HMAC sleutel en opgeslagen HMAC zijn
+        const statusEl = document.getElementById('hmac-status');
+        if (hmacKey && m.hmac) {
+            const valid = await verifyHmac(m.body, hmacKey, m.hmac);
+            if (valid) {
+                statusEl.innerHTML = '<span class="text-success">HMAC geldig: het bericht is niet gewijzigd.</span>';
+            } else {
+                statusEl.innerHTML = '<span class="text-danger">HMAC ongeldig: het bericht is mogelijk gewijzigd!</span>';
+                return;
+            }
+        } else if (m.hmac && !hmacKey) {
+            statusEl.innerHTML = '<span class="text-warning">Dit bericht heeft een HMAC, maar je hebt geen HMAC sleutel ingegeven.</span>';
+        } else {
+            statusEl.innerHTML = '';
+        }
+
         try {
             const plaintext = decrypt(m.body, key);
             document.getElementById('body').textContent = plaintext;
@@ -219,6 +240,10 @@ async function renderNew() {
                         <input id="otpkey" class="form-control" required minlength="1" maxlength="40"
                                pattern="[A-Za-z0-9_]+" title="Enkel A-Z, 0-9 en _" />
                     </div>
+                    <div class="form-group">
+                        <label for="hmackey">HMAC sleutel (afgesproken met ontvanger)</label>
+                        <input id="hmackey" class="form-control" required minlength="1" />
+                    </div>
                     <button type="submit" class="btn btn-primary">Versturen</button>
                     <a href="#/inbox" class="btn btn-link">Annuleren</a>
                 </form>
@@ -230,14 +255,17 @@ async function renderNew() {
         const plaintext = document.getElementById('text').value;
         const key = document.getElementById('otpkey').value.toUpperCase();
         const keyLine = document.getElementById('keyline').value;
+        const hmacKey = document.getElementById('hmackey').value;
 
         const ciphertext = encrypt(plaintext, key);
+        const hmac = await computeHmac(ciphertext, hmacKey);
 
         await api.send({
             recipient: document.getElementById('recipient').value.trim(),
             subject: document.getElementById('subject').value,
             body: ciphertext,
             keyLine: parseInt(keyLine, 10),
+            hmac: hmac,
         });
         location.hash = '#/inbox';
     });

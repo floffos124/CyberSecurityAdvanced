@@ -31,5 +31,9 @@ public class Message
 
     [Display(Name = "Codeboek lijn")]
     public int? KeyLine { get; set; }
+
+    [StringLength(64)]
+    [Display(Name = "HMAC")]
+    public string? Hmac { get; set; }
 }
 
